@@ -1,0 +1,40 @@
+services:
+  database:
+    container_name: cleanarch_postgres
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: cleanarch_blog   # .env'deki POSTGRES_DB ile aynı olması gereken kısım
+      POSTGRES_USER: mcordal
+      POSTGRES_PASSWORD: 157595355
+    ports:
+      - "5432:5432"
+    volumes:
+      - data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U mcordal" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    container_name: cleanarch_db
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: database
+      DATABASE_PORT: "5432"
+      DATABASE_USER: mcordal
+      DATABASE_PASSWORD: 157595355
+      DATABASE_NAME: cleanarch_blog
+      SERVER_PORT: "3000"
+      JWT_SECRET: mcordal123
+    ports:
+      - "3000:3000"
+
+volumes:
+  data:
