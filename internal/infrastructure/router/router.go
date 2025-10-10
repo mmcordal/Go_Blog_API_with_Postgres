@@ -24,7 +24,7 @@ func (Router) RegisterRouter(a *app.App) {
 	br := repository.NewBlogRepository(db)
 
 	// Services
-	as := service.NewAuthService(ur)
+	as := service.NewAuthService(ur, br)
 	bs := service.NewBlogService(br, ur)
 
 	// Handlers
@@ -39,6 +39,7 @@ func (Router) RegisterRouter(a *app.App) {
 	v1.Use(middleware.JWTMiddleware())
 
 	// Auth
+	v1.Get("/users", ah.SearchUsers) // autocomplete (unpublic)
 	v1.Get("/user/:username", ah.GetUserByUsername)
 	v1.Put("/user/:username", ah.UpdateUser)
 	v1.Delete("/user/:username", ah.DeleteUser)
@@ -46,8 +47,12 @@ func (Router) RegisterRouter(a *app.App) {
 	// Blog
 	v1.Get("/blogs", bh.GetAllBlogs)
 	v1.Get("/blogs/:username", bh.GetBlogsByAuthor)
+	v1.Get("/blogs-deleted/:username", bh.GetBlogsByAuthorIncludeDeleted)
 	v1.Get("/blog/:title", bh.GetBlogByTitle)
 	v1.Post("/blog", bh.CreateBlog)
 	v1.Put("/blog/:title", bh.UpdateBlog)
 	v1.Delete("/blog/:title", bh.DeleteBlog)
+	v1.Put("/blog/:title/approve", bh.ApproveBlog)
+	v1.Put("/blog/:title/unapprove", bh.UnapproveBlog)
+	v1.Put("/blog/:title/restore", bh.RestoreBlog)
 }

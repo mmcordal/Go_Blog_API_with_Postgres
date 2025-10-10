@@ -4,6 +4,8 @@ import (
 	"cleanArch_with_postgres/internal/service"
 	"cleanArch_with_postgres/internal/viewmodel"
 	"context"
+	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -22,7 +24,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid input"})
 	}
 
-	userRole := input.Role
+	userRole := strings.ToLower(strings.TrimSpace(input.Role))
 
 	resp, err := h.as.Register(context.Background(), input)
 	if err != nil {
@@ -80,10 +82,39 @@ func (h *AuthHandler) GetUserByUsername(c *fiber.Ctx) error {
 	})
 }
 
+func (h *AuthHandler) SearchUsers(c *fiber.Ctx) error {
+	q := strings.TrimSpace(c.Query("search"))
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+
+	res, err := h.as.SearchUsers(context.Background(), q, limit)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"data": res})
+}
+
 func (h *AuthHandler) UpdateUser(c *fiber.Ctx) error {
-	username := c.Params("username")
-	if username == "" {
+	tokenUsername, ok := c.Locals("username").(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	if tokenUsername == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	tokenRole, _ := c.Locals("role").(string)
+
+	paramUsername := c.Params("username")
+	if paramUsername == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "username required"})
+	}
+	target := paramUsername
+
+	if tokenRole != "admin" {
+		if tokenUsername != paramUsername {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "not allowed"})
+		}
+		target = tokenUsername
 	}
 
 	var input viewmodel.UpdateRequest
@@ -94,7 +125,7 @@ func (h *AuthHandler) UpdateUser(c *fiber.Ctx) error {
 		})
 	}
 
-	resp, err := h.as.UpdateUser(context.Background(), username, &input)
+	resp, err := h.as.UpdateUser(context.Background(), target, &input)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -107,16 +138,29 @@ func (h *AuthHandler) UpdateUser(c *fiber.Ctx) error {
 
 func (h *AuthHandler) DeleteUser(c *fiber.Ctx) error {
 	tokenUsername, ok := c.Locals("username").(string)
-	if !ok || tokenUsername == "" {
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	if tokenUsername == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
+	tokenRole, _ := c.Locals("role").(string)
+
 	paramUsername := c.Params("username")
-	if paramUsername != tokenUsername {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "param olarak girilen username ile token username eşleşmyor"})
+	if paramUsername == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "username required"})
+	}
+	target := paramUsername
+
+	if tokenRole != "admin" {
+		if tokenUsername != paramUsername {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "not allowed"})
+		}
+		target = tokenUsername
 	}
 
-	err := h.as.DeleteUser(context.Background(), tokenUsername)
+	err := h.as.DeleteUser(context.Background(), target)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

@@ -4,6 +4,7 @@ import (
 	"cleanArch_with_postgres/internal/service"
 	"cleanArch_with_postgres/internal/viewmodel"
 	"context"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -27,7 +28,7 @@ func (h *BlogHandler) CreateBlog(c *fiber.Ctx) error {
 	}
 
 	username, ok := c.Locals("username").(string)
-	if !ok || username == "" {
+	if !ok || username == "" { // ok la username ayır
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid token username",
 		})
@@ -122,7 +123,17 @@ func (h *BlogHandler) GetAllBlogs(c *fiber.Ctx) error {
 	if !ok || username == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid token username"})
 	}
-	resp, err := h.bs.GetAllBlogs(context.Background(), username)
+
+	includeDeleted := false
+	// include_deleted=true mu?
+	if v := c.Query("include_deleted"); v == "true" || v == "1" {
+		// rol kontrolü: sadece admin kullanabilsin
+		if role, _ := c.Locals("role").(string); role == "admin" {
+			includeDeleted = true
+		}
+	}
+
+	resp, err := h.bs.GetAllBlogsWithOptions(context.Background(), username, includeDeleted)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -138,13 +149,33 @@ func (h *BlogHandler) GetBlogsByAuthor(c *fiber.Ctx) error {
 	if !ok || tokenUsername == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid token username"})
 	}
-	resp, err := h.bs.GetBlogsByAuthor(context.Background(), paramUsername, tokenUsername)
+
+	// include_deleted=true/1/yes destekle
+	inc := strings.ToLower(c.Query("include_deleted"))
+	includeDeleted := inc == "1" || inc == "true" || inc == "yes"
+
+	resp, err := h.bs.GetBlogsByAuthor(context.Background(), paramUsername, tokenUsername, includeDeleted)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Blogs Author: " + paramUsername,
 		"data":    resp,
+	})
+}
+
+func (h *BlogHandler) GetBlogsByAuthorIncludeDeleted(c *fiber.Ctx) error {
+	username := c.Params("username")
+	if username == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid username"})
+	}
+
+	resp, err := h.bs.GetBlogsByAuthorIncludeDeleted(context.Background(), username)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"data": resp,
 	})
 }
 
@@ -162,4 +193,31 @@ func (h *BlogHandler) GetBlogByTitle(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"data": resp})
+}
+
+func (h *BlogHandler) ApproveBlog(c *fiber.Ctx) error {
+	title := c.Params("title")
+	username, _ := c.Locals("username").(string)
+	if err := h.bs.ApproveBlog(context.Background(), title, username, true); err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "approved"})
+}
+
+func (h *BlogHandler) UnapproveBlog(c *fiber.Ctx) error {
+	title := c.Params("title")
+	username, _ := c.Locals("username").(string)
+	if err := h.bs.ApproveBlog(context.Background(), title, username, false); err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "unapproved"})
+}
+
+func (h *BlogHandler) RestoreBlog(c *fiber.Ctx) error {
+	title := c.Params("title")
+	username, _ := c.Locals("username").(string)
+	if err := h.bs.RestoreBlog(context.Background(), title, username); err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"message": "restored"})
 }

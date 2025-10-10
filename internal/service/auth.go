@@ -2,12 +2,12 @@ package service
 
 import (
 	"cleanArch_with_postgres/internal/entity"
+	"cleanArch_with_postgres/internal/infrastructure/config"
 	"cleanArch_with_postgres/internal/repository"
 	"cleanArch_with_postgres/internal/viewmodel"
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -18,16 +18,18 @@ type AuthService interface {
 	Register(ctx context.Context, vm viewmodel.RegisterRequest) (*viewmodel.RegisterResponse, error)
 	Login(ctx context.Context, identifier, password string) (*viewmodel.LoginResponse, error)
 	GetUserVMByUsername(ctx context.Context, paramUsername, tokenUsername string) (*viewmodel.UserVM, error)
+	SearchUsers(ctx context.Context, prefix string, limit int) ([]viewmodel.UserVM, error)
 	UpdateUser(ctx context.Context, username string, vm *viewmodel.UpdateRequest) (*viewmodel.UpdateResponse, error)
 	DeleteUser(ctx context.Context, username string) error
 }
 
 type authService struct {
 	ur repository.UserRepository
+	br repository.BlogRepository
 }
 
-func NewAuthService(ur repository.UserRepository) AuthService {
-	return &authService{ur: ur}
+func NewAuthService(ur repository.UserRepository, br repository.BlogRepository) AuthService {
+	return &authService{ur: ur, br: br}
 }
 
 func (s *authService) Register(ctx context.Context, vm viewmodel.RegisterRequest) (*viewmodel.RegisterResponse, error) {
@@ -95,7 +97,7 @@ type accessToken struct {
 
 func (s *authService) Login(ctx context.Context, identifier, password string) (*viewmodel.LoginResponse, error) {
 	user, err := s.ur.GetByIdentifier(ctx, identifier)
-	if user == nil || err != nil {
+	if user == nil || err != nil { // ***
 		return nil, errors.New("user not found")
 	}
 
@@ -108,7 +110,8 @@ func (s *authService) Login(ctx context.Context, identifier, password string) (*
 		return nil, errors.New("invalid password")
 	}
 
-	jwtSecret := os.Getenv("JWT_SECRET")
+	// jwtSecret := os.Getenv("JWT_SECRET") // config'den çek ***
+	jwtSecret := []byte(config.Get().Secret.JWTSecret)
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, accessToken{
 		Username: user.Username,
 		UserID:   user.ID,
@@ -124,6 +127,7 @@ func (s *authService) Login(ctx context.Context, identifier, password string) (*
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
+		Role:     string(user.Role),
 	}
 
 	return resp, nil
@@ -150,6 +154,22 @@ func (s *authService) GetUserVMByUsername(ctx context.Context, paramUsername, to
 	return viewmodel.ToUserVM(user), nil
 }
 
+// implementasyon:
+func (s *authService) SearchUsers(ctx context.Context, prefix string, limit int) ([]viewmodel.UserVM, error) {
+	if len(prefix) == 0 {
+		return []viewmodel.UserVM{}, nil
+	}
+	users, err := s.ur.SearchByUsernamePrefix(ctx, prefix, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]viewmodel.UserVM, 0, len(users))
+	for _, u := range users {
+		out = append(out, *viewmodel.ToUserVM(&u))
+	}
+	return out, nil
+}
+
 func (s *authService) UpdateUser(ctx context.Context, username string, vm *viewmodel.UpdateRequest) (*viewmodel.UpdateResponse, error) {
 	if vm == nil {
 		return nil, errors.New("user is nil")
@@ -166,6 +186,7 @@ func (s *authService) UpdateUser(ctx context.Context, username string, vm *viewm
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
+
 	existUser, err := s.ur.ExistUser(ctx, vm.Email, vm.Username)
 	if err != nil {
 		return nil, err
@@ -174,12 +195,28 @@ func (s *authService) UpdateUser(ctx context.Context, username string, vm *viewm
 		return nil, errors.New("email or username already exists")
 	}
 
-	user.Email = vm.Email
-	user.Username = vm.Username
+	oldUsername := user.Username
+
+	if user.DeletedAt.Valid {
+		return nil, errors.New("user is deleted")
+	}
+	if vm.Username != "" {
+		user.Username = vm.Username
+	}
+	if vm.Email != "" {
+		user.Email = vm.Email
+	}
 	if vm.Password != "" {
 		user.Password = vm.Password
 	}
 	user.UpdatedAt = time.Now()
+
+	if oldUsername != user.Username {
+		err := s.br.UpdateAuthorUsername(ctx, oldUsername, user.Username)
+		if err != nil {
+			return nil, errors.New("failed to author username in blogs")
+		}
+	}
 
 	resp := viewmodel.UpdateResponse{
 		ID:        user.ID,

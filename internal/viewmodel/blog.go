@@ -8,9 +8,11 @@ import (
 )
 
 type BlogVM struct {
+	ID         uint           `json:"id"`
 	Title      string         `json:"title"`
 	Body       string         `json:"body"`
 	Type       string         `json:"type"`
+	AuthorID   int            `json:"author_id"`
 	Username   string         `json:"username"`
 	Tags       string         `json:"tags"`
 	Category   string         `json:"category"`
@@ -53,9 +55,11 @@ type BlogUpdateResponse struct {
 
 func ToBlogVM(b *entity.Blog) *BlogVM {
 	return &BlogVM{
+		ID:         b.ID,
 		Title:      b.Content.Title,
 		Body:       b.Content.Body,
 		Type:       b.Content.Type,
+		AuthorID:   b.Content.AuthorID,
 		Username:   b.Content.Username,
 		Tags:       b.Tags,
 		Category:   b.Category,

@@ -63,7 +63,7 @@ func Setup() (*Config, error) {
 		config = &Config{}
 	}
 
-	if err := viper.Unmarshal(&config); err != nil {
+	if err := viper.Unmarshal(config); err != nil {
 		return nil, err // değişti ---> return config, err
 	}
 

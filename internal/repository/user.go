@@ -16,6 +16,7 @@ type UserRepository interface {
 	ExistUser(ctx context.Context, email, username string) (bool, error)
 	GetByUsername(ctx context.Context, username string) (*entity.User, error)
 	GetByIdentifier(ctx context.Context, identifier string) (*entity.User, error)
+	SearchByUsernamePrefix(ctx context.Context, prefix string, limit int) ([]entity.User, error)
 }
 
 type userRepository struct {
@@ -119,4 +120,19 @@ func (r *userRepository) GetByIdentifier(ctx context.Context, identifier string)
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *userRepository) SearchByUsernamePrefix(ctx context.Context, prefix string, limit int) ([]entity.User, error) {
+	var users []entity.User
+	if limit <= 0 {
+		limit = 10
+	}
+	err := r.db.WithContext(ctx).
+		Where("username ILIKE ?", prefix+"%").
+		Limit(limit).
+		Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
 }

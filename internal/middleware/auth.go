@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"os"
+	"cleanArch_with_postgres/internal/infrastructure/config"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -20,7 +20,8 @@ func JWTMiddleware() fiber.Handler {
 			authHeader = strings.TrimPrefix(authHeader, "Bearer ")
 		}
 
-		jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+		// jwtSecret := []byte(os.Getenv("JWT_SECRET")) // configden çek
+		jwtSecret := []byte(config.Get().Secret.JWTSecret)
 		token, err := jwt.Parse(authHeader, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fiber.NewError(fiber.StatusUnauthorized, "Unexpected signing method")
@@ -52,6 +53,9 @@ func JWTMiddleware() fiber.Handler {
 		}
 		if username, ok := claims["username"].(string); ok {
 			c.Locals("username", username)
+		}
+		if role, ok := claims["role"].(string); ok {
+			c.Locals("role", role)
 		}
 
 		return c.Next()
