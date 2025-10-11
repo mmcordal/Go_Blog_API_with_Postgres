@@ -1,4 +1,4 @@
-# Blog API (Go + Fiber + PostgreSQL)
+# Blog API (Go + Fiber + PostgreSQL + vue.js)
 
 Bu proje, Go dili kullanılarak geliştirilmiş bir blog web API uygulamasıdır.
 Ayrıca temel seviyede vue.js kullanarak frontend kısmını da geliştirdim.
