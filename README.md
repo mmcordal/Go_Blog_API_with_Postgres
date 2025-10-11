@@ -11,6 +11,7 @@ Amaç backend ağırlıklı full-stack geliştirme pratiği yapmaktır.
 - Docker (container yönetimi)
 - JWT (kimlik doğrulama)
 - SHA256 (şifreleme)
+- Vue.js (front-end)
 
 
 ## Kurulum
