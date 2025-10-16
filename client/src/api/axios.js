@@ -3,10 +3,10 @@ import axios from "axios";
 const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 const api = axios.create({
-    baseURL: `${base}/api/v1`,  // 👈 burada /api/v1 ekli
+    baseURL: `${base}/api/v1`,
 });
 
-// Request interceptor (aynı)
+// Request interceptor
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem("token");
@@ -19,7 +19,7 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor (401 redirect)
+// Response interceptor (401 → logout + rol yenile tetikle)
 api.interceptors.response.use(
     (res) => res,
     (err) => {
@@ -29,6 +29,10 @@ api.interceptors.response.use(
             localStorage.removeItem("username");
             localStorage.removeItem("email");
             localStorage.removeItem("id");
+
+            // 🔔 rol/menu’yu anında güncelle
+            try { window.dispatchEvent(new Event("auth:changed")); } catch {}
+
             if (window.location.pathname !== "/login") {
                 window.location.href = "/login";
             }

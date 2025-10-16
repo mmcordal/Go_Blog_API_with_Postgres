@@ -1,0 +1,16 @@
+<!-- LogNode Icon-only -->
+<svg width="40" height="40" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LogNode icon">
+    <defs>
+        <linearGradient id="mint" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#19d27c"/>
+            <stop offset="100%" stop-color="#0bbf68"/>
+        </linearGradient>
+    </defs>
+    <rect x="2" y="2" width="40" height="40" rx="10" fill="rgba(25,210,124,0.08)" stroke="#19d27c" stroke-width="2"/>
+    <!-- Hex -->
+    <path d="M22 7 L33 13 L33 25 L22 31 L11 25 L11 13 Z" fill="none" stroke="url(#mint)" stroke-width="2.5"/>
+    <!-- L -->
+    <path d="M15 14 V26 H23" stroke="#19d27c" stroke-width="3" stroke-linecap="round"/>
+    <!-- N -->
+    <path d="M25 26 V15 L31 26" stroke="url(#mint)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

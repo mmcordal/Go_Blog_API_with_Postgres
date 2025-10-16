@@ -1,35 +1,41 @@
 @import './base.css';
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+/* Basit container: App.vue ve üst header aynı genişliği kullansın */
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 16px;
 }
 
+/* Uygulama gövdesi boşlukları */
+#app {
+    font-weight: normal;
+}
+
+/* Marka yeşili (hover vb.) */
 a,
 .green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+    text-decoration: none;
+    color: hsla(160, 100%, 37%, 1);
+    transition: 0.2s;
+    padding: 2px;
 }
 
 @media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
+    a:hover {
+        background-color: hsla(160, 100%, 37%, 0.16);
+        border-radius: 6px;
+    }
 }
 
+/* ❌ Vite default iki sütun grid ve body flex kaldırıldı */
 @media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
+    body {
+        /* no-op: default davranış */
+    }
 
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
+    #app {
+        /* no grid, no forced columns */
+        padding: 0;
+    }
 }

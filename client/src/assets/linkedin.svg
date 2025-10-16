@@ -1,0 +1,18 @@
+<!-- LinkedIn / LogNode theme -->
+<svg width="28" height="28" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-label="LinkedIn">
+    <defs>
+        <linearGradient id="mint-in" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#19d27c"/>
+            <stop offset="100%" stop-color="#0bbf68"/>
+        </linearGradient>
+    </defs>
+    <rect x="1" y="1" width="26" height="26" rx="7" fill="rgba(25,210,124,0.08)" stroke="url(#mint-in)" stroke-width="2"/>
+    <g transform="translate(2,2)">
+        <path d="M22.225 0H1.771C.792 0 0 .771 0 1.723v20.554C0 23.23.792 24 1.771 24h20.451C23.2 24 24 23.23 24 22.277V1.723C24 .771 23.2 0 22.222 0z"
+              fill="none"/>
+        <circle cx="5.34" cy="5.36" r="2.07" fill="#19d27c"/>
+        <rect x="3.86" y="9" width="2.95" height="11.45" fill="#19d27c" rx=".6"/>
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.135 1.445-2.135 2.94v5.666H9.352V9h3.414v1.561h.049c.476-.9 1.637-1.852 3.369-1.852 3.601 0 4.268 2.37 4.268 5.455v6.288z"
+              fill="#19d27c"/>
+    </g>
+</svg>

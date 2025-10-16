@@ -1,66 +1,167 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import { ref, onMounted } from 'vue'
-import api from './api/axios'
-import HelloWorld from './components/HelloWorld.vue'
+import { RouterLink, RouterView, useRoute } from "vue-router";
+import { ref, onMounted, onUnmounted, watch } from "vue";
+import api from "./api/axios";
 
-const role = ref("") // "", "reader", "writer", "admin"
+const role = ref("");
+const route = useRoute();
 
-onMounted(async () => {
-  const u = localStorage.getItem("username");
-  if (!u) return; // login değilse rol boş kalsın
+async function loadRole() {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    role.value = "";
+    return;
+  }
+
   try {
-    const { data } = await api.get(`/user/${encodeURIComponent(u)}`);
+    const { data } = await api.get("/me");
     role.value = data?.data?.role || "";
   } catch (e) {
-    // rol alınamazsa sessiz geç; menüde "Blog Oluştur" görünmez
-    role.value = "";
-    console.warn("role fetch failed:", e?.response?.data || e?.message);
+    // 401 durumunda tekrar login'e zorlamayalım, sadece console.warn
+    console.warn("Role yüklenemedi:", e?.response?.data || e?.message);
   }
+}
+
+onMounted(() => {
+  // login sonrası token yazılmışsa bir nebze bekleyelim
+  setTimeout(loadRole, 200);
+  window.addEventListener("auth:changed", loadRole);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("auth:changed", loadRole);
+});
+
+watch(() => route.fullPath, () => {
+  // her rota değişiminde yeniden role çekmek güvenli
+  loadRole();
 });
 
 function canCreate() {
   return role.value === "writer" || role.value === "admin";
 }
-
 function isAdmin() {
   return role.value === "admin";
+}
+function logout() {
+  localStorage.clear();
+  window.dispatchEvent(new Event("auth:changed"));
+  window.location.href = "/login";
+}
+function isLoginPage() {
+  return route.path === "/login" || route.path === "/register";
 }
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <RouterLink class="nav-link" to="/">
+          <img alt="LogNode" class="logo" src="@/assets/logo-lognode.svg" width="140" height="40" />
+        </RouterLink>
+        <span class="brand-name">LogNode</span>
+      </div>
 
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/me">Hesabım</RouterLink>
-        <RouterLink v-if="canCreate()" to="/blog-create">Blog Oluştur</RouterLink>
-        <RouterLink to="/users">Kullanıcılar</RouterLink>
-        <RouterLink to="/blogs">Bloglar</RouterLink>
-        <RouterLink v-if="role === 'admin'" to="/admin/pending">Onay Bekleyenler</RouterLink>
+      <nav class="navbar">
+        <div v-if="!isLoginPage()">
+          <RouterLink vclass="nav-link" to="/">Home</RouterLink>
+          <RouterLink class="nav-link" to="/me">Hesabım</RouterLink>
+          <RouterLink class="nav-link" v-if="canCreate()" to="/blog-create">Blog Oluştur</RouterLink>
+          <RouterLink class="nav-link" to="/users">Kullanıcılar</RouterLink>
+          <RouterLink class="nav-link" to="/blogs">Bloglar</RouterLink>
+          <RouterLink class="nav-link" v-if="isAdmin()" to="/admin/pending">Onay Bekleyenler</RouterLink>
+          <RouterLink class="nav-link" v-if="isAdmin()" to="/admin/role-requests">Rol Talepleri</RouterLink>
+          <button class="logout-btn"@click="logout">Çıkış Yap</button>
+        </div>
+        <div class="social-links">
+          <a href="https://github.com/mmcordal/blog-api-go" target="_blank" rel="noopener" class="social-icon">
+            <img src="@/assets/github.svg" alt="GitHub" />
+          </a>
+          <a href="https://linkedin.com/in/melih-cordal" target="_blank" rel="noopener" class="social-icon">
+            <img src="@/assets/linkedin.svg" alt="LinkedIn" />
+          </a>
+        </div>
       </nav>
     </div>
   </header>
 
-  <RouterView />
+  <main class="container page-body">
+    <RouterView />
+  </main>
 </template>
 
 <style scoped>
-header { line-height: 1.5; max-height: 100vh; }
-.logo { display: block; margin: 0 auto 2rem; }
-nav { width: 100%; font-size: 12px; text-align: center; margin-top: 2rem; }
-nav a.router-link-exact-active { color: var(--color-text); }
-nav a.router-link-exact-active:hover { background-color: transparent; }
-nav a { display: inline-block; padding: 0 1rem; border-left: 1px solid var(--color-border); }
-nav a:first-of-type { border: 0; }
-@media (min-width: 1024px) {
-  header { display: flex; place-items: center; padding-right: calc(var(--section-gap) / 2); }
-  .logo { margin: 0 2rem 0 0; }
-  header .wrapper { display: flex; place-items: flex-start; flex-wrap: wrap; }
-  nav { text-align: left; margin-left: -1rem; font-size: 1rem; padding: 1rem 0; margin-top: 1rem; }
+/* mevcut stiller birebir korundu */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: saturate(120%) blur(6px);
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.logo { width: 28px; height: 28px; }
+.brand-name { font-weight: 700; letter-spacing: .2px; color: var(--color-heading); }
+.navbar { display: flex; align-items: center; gap: 14px; justify-content: center; }
+.nav-link {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  color: var(--color-text);
+  transition: all .2s ease;
+}
+.nav-link:hover {
+  border-color: var(--color-border-hover);
+  background: var(--color-background-soft);
+}
+.nav-link.router-link-exact-active {
+  border-color: hsla(160, 100%, 37%, 0.45);
+  box-shadow: 0 0 0 2px hsla(160, 100%, 37%, 0.18) inset;
+}
+.page-body { padding: 20px 0 32px; }
+@media (max-width: 700px) {
+  .header-inner { flex-direction: column; gap: 10px; padding: 10px 0; }
+  .navbar { flex-wrap: wrap; gap: 8px; }
+}
+.social-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  border-left: 1px solid var(--color-border);
+  padding-left: 10px;
+}
+.social-icon img {
+  width: 20px;
+  height: 20px;
+  opacity: 0.8;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.social-icon:hover img {
+  opacity: 1;
+  transform: scale(1.1);
+}
+.logout-btn {
+  border: 1px solid #19d27c;
+  background: transparent;
+  color: #19d27c;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+.logout-btn:hover {
+  background: #19d27c;
+  color: black;
 }
 </style>
