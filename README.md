@@ -2,7 +2,7 @@
 
 Bu proje, Go dili kullanılarak geliştirilmiş bir blog web API uygulamasıdır.  
 Amaç backend geliştirme pratiği yapmaktır.  
-Not: Frontend eklemelerinin çoğunluğu AI yardımı ile yapılmıştır.
+Not: Frontend eklemelerinin çoğunluğu AI yardımı ile yapılmıştır. Amacı full-stack mantığını kavrayabilmek.
 
 ## Özellikler
 - Go (Fiber framework)
