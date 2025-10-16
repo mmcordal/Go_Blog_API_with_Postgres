@@ -297,13 +297,13 @@ textarea:focus {
 }
 
 /* İpucu */
-.hint {
+/*.hint {
   font-size: 12px;
   line-height: 1.4;
   color: var(--color-text);
   opacity: .82;
   margin-top: 2px;
-}
+}*/
 
 /* Buton */
 .btn {
