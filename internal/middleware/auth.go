@@ -20,10 +20,13 @@ func JWTMiddleware() fiber.Handler {
 			authHeader = strings.TrimPrefix(authHeader, "Bearer ")
 		}
 
-		// jwtSecret := []byte(os.Getenv("JWT_SECRET")) // configden çek
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+
+		// jwtSecret := []byte(os.Getenv("JWT_SECRET")) // configden çek; gereksiz yere Getenv kullanma
 		jwtSecret := []byte(config.Get().Secret.JWTSecret)
-		token, err := jwt.Parse(authHeader, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		claims := jwt.MapClaims{}
+		token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fiber.NewError(fiber.StatusUnauthorized, "Unexpected signing method")
 			}
 			return jwtSecret, nil
@@ -35,27 +38,42 @@ func JWTMiddleware() fiber.Handler {
 			})
 		}
 
-		if err != nil || !token.Valid {
+		if token == nil || !token.Valid {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "Invalid or expired token",
 			})
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Invalid token claims",
-			})
+		if v, ok := claims["username"].(string); ok && v != "" {
+			c.Locals("username", v)
 		}
 
-		if userID, ok := claims["user_id"].(uint); ok {
-			c.Locals("userID", userID)
+		if v, ok := claims["role"].(string); ok && v != "" {
+			c.Locals("role", v)
 		}
-		if username, ok := claims["username"].(string); ok {
-			c.Locals("username", username)
-		}
-		if role, ok := claims["role"].(string); ok {
-			c.Locals("role", role)
+
+		// user_id (MapClaims sayısal değerleri float64 getiriyo)
+		if v, ok := claims["user_id"]; ok {
+			switch id := v.(type) {
+			case float64:
+				uid := uint(id)
+				c.Locals("user_id", uid)
+				c.Locals("userID", uid)
+				c.Locals("userId", uid)
+
+			case int64:
+				uid := uint(id)
+				c.Locals("user_id", uid)
+				c.Locals("userID", uid)
+				c.Locals("userId", uid)
+
+			case int:
+				uid := uint(id)
+				c.Locals("user_id", uid)
+				c.Locals("userID", uid)
+				c.Locals("userId", uid)
+
+			}
 		}
 
 		return c.Next()

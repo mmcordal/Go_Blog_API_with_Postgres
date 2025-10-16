@@ -1,3 +1,4 @@
+// comment ile ilgili kullanıcı işlemlerini ileride ekleyeceğim.
 package entity
 
 type Comment struct {

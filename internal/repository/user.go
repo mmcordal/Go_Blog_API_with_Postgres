@@ -17,6 +17,9 @@ type UserRepository interface {
 	GetByUsername(ctx context.Context, username string) (*entity.User, error)
 	GetByIdentifier(ctx context.Context, identifier string) (*entity.User, error)
 	SearchByUsernamePrefix(ctx context.Context, prefix string, limit int) ([]entity.User, error)
+	SearchByUsernamePrefixWithOptions(ctx context.Context, prefix string, limit int, includeDeleted bool) ([]entity.User, error)
+	Restore(ctx context.Context, username string) error
+	SetRole(ctx context.Context, username string, role entity.UserRole) error
 }
 
 type userRepository struct {
@@ -135,4 +138,53 @@ func (r *userRepository) SearchByUsernamePrefix(ctx context.Context, prefix stri
 		return nil, err
 	}
 	return users, nil
+}
+
+func (r *userRepository) SearchByUsernamePrefixWithOptions(ctx context.Context, prefix string, limit int, includeDeleted bool) ([]entity.User, error) {
+	var users []entity.User
+	if limit <= 0 {
+		limit = 10
+	}
+
+	q := r.db.WithContext(ctx)
+	if includeDeleted {
+		q = q.Unscoped() // soft-deleted dahil
+	}
+
+	if err := q.
+		Where("username ILIKE ?", prefix+"%").
+		Limit(limit).
+		Find(&users).Error; err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
+func (r *userRepository) Restore(ctx context.Context, username string) error {
+	tx := r.db.WithContext(ctx).
+		Model(&entity.User{}).
+		Unscoped(). // deleted_at NULL yapabilmek için
+		Where("username = ?", username).
+		Updates(map[string]interface{}{
+			"deleted_at": nil,
+			"updated_at": time.Now(),
+		})
+
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (r *userRepository) SetRole(ctx context.Context, username string, role entity.UserRole) error {
+	return r.db.WithContext(ctx).
+		Model(&entity.User{}).
+		Where("username = ?", username).
+		Updates(map[string]interface{}{
+			"role":       role,
+			"updated_at": time.Now(),
+		}).Error
 }

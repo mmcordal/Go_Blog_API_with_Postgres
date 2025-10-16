@@ -80,8 +80,8 @@ func (r *blogRepository) Delete(ctx context.Context, title string) (string, erro
 	err = r.db.WithContext(ctx).Model(&entity.Blog{}).Where("title = ?", decodedTitle).
 		Updates(map[string]interface{}{
 			"deleted_at":  time.Now(),
-			"status":      "deleted", // silinen blogların statüsünü "deleted" olarak güncelleniyor
-			"is_approved": false,     // silinen blogun onayını kaldırıyor
+			"status":      "deleted", // silinen blogların statüsünü "deleted" olarak güncelleniyo
+			"is_approved": false,     // silinen blogun onayını kaldırıyo
 		}).Error
 
 	if err != nil {
@@ -118,7 +118,8 @@ func (r *blogRepository) GetAllTrueApproved(ctx context.Context) ([]entity.Blog,
 
 func (r *blogRepository) GetAllIncludeDeleted(ctx context.Context) ([]entity.Blog, error) {
 	var blogs []entity.Blog
-	if err := r.db.WithContext(ctx).Unscoped().Find(&blogs).Error; err != nil { //Unscoped() GORM’un soft delete filtrelemesini kapatır ve deleted_at dolu kayıtları da getirir.
+	if err := r.db.WithContext(ctx).Unscoped(). // Unscoped() GORM’un soft delete filtrelemesini kapatır
+							Find(&blogs).Error; err != nil { // ve deleted_at dolu kayıtları da getirir.
 		fmt.Println("blog getAllIncludeDeleted error:", err)
 		return nil, err
 	}
@@ -152,7 +153,7 @@ func (r *blogRepository) GetBlogsByAuthorTrueApproved(ctx context.Context, usern
 func (r *blogRepository) GetBlogsByAuthorIncludeDeleted(ctx context.Context, username string) ([]entity.Blog, error) {
 	var blogs []entity.Blog
 	err := r.db.WithContext(ctx).
-		Unscoped(). // <— soft-deleted dahil		//Unscoped() GORM’un soft delete filtrelemesini kapatır ve deleted_at dolu kayıtları da getirir.
+		Unscoped(). // <— soft-deleted dahil
 		Where("username = ?", username).
 		Find(&blogs).Error
 	if err != nil {
@@ -249,8 +250,10 @@ func (r *blogRepository) Restore(ctx context.Context, title string) error {
 		Unscoped(). // soft-deleted dahil
 		Where("title = ?", decodedTitle).
 		Updates(map[string]interface{}{
-			"deleted_at": nil,
-			"updated_at": time.Now(),
+			"deleted_at":  nil,
+			"updated_at":  time.Now(),
+			"status":      "",
+			"is_approved": false,
 		})
 
 	if tx.Error != nil {

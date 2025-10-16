@@ -22,9 +22,10 @@ func (Router) RegisterRouter(a *app.App) {
 	// Repositories
 	ur := repository.NewUserRepository(db)
 	br := repository.NewBlogRepository(db)
+	rr := repository.NewRoleRequestRepository(db)
 
 	// Services
-	as := service.NewAuthService(ur, br)
+	as := service.NewAuthService(ur, br, rr)
 	bs := service.NewBlogService(br, ur)
 
 	// Handlers
@@ -43,6 +44,11 @@ func (Router) RegisterRouter(a *app.App) {
 	v1.Get("/user/:username", ah.GetUserByUsername)
 	v1.Put("/user/:username", ah.UpdateUser)
 	v1.Delete("/user/:username", ah.DeleteUser)
+	v1.Put("/user/:username/restore", ah.RestoreUser)
+	// Me
+	v1.Get("/me", ah.GetMe)
+	v1.Put("/me", ah.UpdateMe)
+	v1.Delete("/me", ah.DeleteMe)
 
 	// Blog
 	v1.Get("/blogs", bh.GetAllBlogs)
@@ -55,4 +61,10 @@ func (Router) RegisterRouter(a *app.App) {
 	v1.Put("/blog/:title/approve", bh.ApproveBlog)
 	v1.Put("/blog/:title/unapprove", bh.UnapproveBlog)
 	v1.Put("/blog/:title/restore", bh.RestoreBlog)
+
+	// Role Requests
+	v1.Get("/role-requests", ah.ListRoleRequests) // ?status=pending|approved|rejected&limit=100
+	v1.Post("/role-requests", ah.RequestAdminRole)
+	v1.Put("/role-requests/:id/approve", ah.ApproveRoleRequest)
+	v1.Put("/role-requests/:id/reject", ah.RejectRoleRequest)
 }

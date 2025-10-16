@@ -33,7 +33,7 @@ func New(router IRouter) *App {
 	db := database.New(cfg.Database)
 
 	fiberApp.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:5173", // http://localhost:5173	http://10.242.82.156:5173
+		AllowOrigins: "http://localhost:5173", // http://localhost:5173	http://---IP---:5173
 		AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
@@ -60,5 +60,5 @@ func (a *App) Start() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
-	<-c //
+	<-c
 }

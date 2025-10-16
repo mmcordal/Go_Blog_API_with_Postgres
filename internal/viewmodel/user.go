@@ -13,10 +13,11 @@ type UserVM struct {
 	Followers []string  `json:"followers"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	DeletedAt time.Time `json:"deleted_at"`
 }
 
 type RegisterRequest struct {
-	Username string `json:"username"`
+	Username string `json:"username"` // ***** validate:"required,min=3,max=20,label=kullanıcı adı"
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Role     string `json:"role"`
@@ -64,5 +65,6 @@ func ToUserVM(u *entity.User) *UserVM {
 		Followers: u.Followers,
 		CreatedAt: u.CreatedAt,
 		UpdatedAt: u.UpdatedAt,
+		DeletedAt: u.DeletedAt.Time,
 	}
 }

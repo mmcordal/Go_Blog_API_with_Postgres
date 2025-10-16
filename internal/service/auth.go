@@ -19,17 +19,24 @@ type AuthService interface {
 	Login(ctx context.Context, identifier, password string) (*viewmodel.LoginResponse, error)
 	GetUserVMByUsername(ctx context.Context, paramUsername, tokenUsername string) (*viewmodel.UserVM, error)
 	SearchUsers(ctx context.Context, prefix string, limit int) ([]viewmodel.UserVM, error)
+	SearchUsersWithOptions(ctx context.Context, viewerUsername, prefix string, limit int, includeDeleted bool) ([]viewmodel.UserVM, error)
+	RestoreUser(ctx context.Context, username string) error
 	UpdateUser(ctx context.Context, username string, vm *viewmodel.UpdateRequest) (*viewmodel.UpdateResponse, error)
 	DeleteUser(ctx context.Context, username string) error
+	RequestAdminRole(ctx context.Context, username, reason string) (*viewmodel.RoleRequestVM, error)
+	ListRoleRequests(ctx context.Context, status string, limit int) ([]viewmodel.RoleRequestVM, error)
+	ApproveRoleRequest(ctx context.Context, id uint, adminUsername string) error
+	RejectRoleRequest(ctx context.Context, id uint, adminUsername string) error
 }
 
 type authService struct {
 	ur repository.UserRepository
 	br repository.BlogRepository
+	rr repository.RoleRequestRepository
 }
 
-func NewAuthService(ur repository.UserRepository, br repository.BlogRepository) AuthService {
-	return &authService{ur: ur, br: br}
+func NewAuthService(ur repository.UserRepository, br repository.BlogRepository, rr repository.RoleRequestRepository) AuthService {
+	return &authService{ur: ur, br: br, rr: rr}
 }
 
 func (s *authService) Register(ctx context.Context, vm viewmodel.RegisterRequest) (*viewmodel.RegisterResponse, error) {
@@ -170,6 +177,45 @@ func (s *authService) SearchUsers(ctx context.Context, prefix string, limit int)
 	return out, nil
 }
 
+func (s *authService) SearchUsersWithOptions(ctx context.Context, viewerUsername, prefix string, limit int, includeDeleted bool) ([]viewmodel.UserVM, error) {
+	if len(prefix) == 0 {
+		return []viewmodel.UserVM{}, nil
+	}
+
+	// viewer’ı çek → admin mi?
+	viewer, err := s.ur.GetByUsername(ctx, viewerUsername)
+	if err != nil {
+		return nil, errors.New("viewer not found")
+	}
+
+	// admin değilse silinmişleri gösterme
+	if string(viewer.Role) != "admin" {
+		includeDeleted = false
+	}
+
+	users, err := s.ur.SearchByUsernamePrefixWithOptions(ctx, prefix, limit, includeDeleted)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]viewmodel.UserVM, 0, len(users))
+	for _, u := range users {
+		out = append(out, *viewmodel.ToUserVM(&u))
+	}
+	return out, nil
+}
+
+func (s *authService) RestoreUser(ctx context.Context, username string) error {
+	if username == "" {
+		return errors.New("invalid username")
+	}
+
+	if err := s.ur.Restore(ctx, username); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *authService) UpdateUser(ctx context.Context, username string, vm *viewmodel.UpdateRequest) (*viewmodel.UpdateResponse, error) {
 	if vm == nil {
 		return nil, errors.New("user is nil")
@@ -244,4 +290,82 @@ func (s *authService) DeleteUser(ctx context.Context, username string) error {
 	}
 
 	return s.ur.Delete(ctx, username)
+}
+
+// admin onayı için role request servisleri
+func (s *authService) RequestAdminRole(ctx context.Context, username, reason string) (*viewmodel.RoleRequestVM, error) {
+	if username == "" {
+		return nil, errors.New("invalid username")
+	}
+
+	if last, err := s.rr.LatestByUser(ctx, username); err == nil && last != nil && last.Status == entity.RoleReqPending {
+		return nil, errors.New("zaten bekleyen bir talebiniz var")
+	}
+	rr := &entity.RoleRequest{
+		Username:      username,
+		RequestedRole: "admin",
+		Status:        entity.RoleReqPending,
+		Reason:        reason,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+	if err := s.rr.Create(ctx, rr); err != nil {
+		return nil, err
+	}
+	return viewmodel.ToRoleReqVM(rr), nil
+}
+
+func (s *authService) ListRoleRequests(ctx context.Context, status string, limit int) ([]viewmodel.RoleRequestVM, error) {
+	var st entity.RoleRequestStatus
+	switch status {
+	case "pending":
+		st = entity.RoleReqPending
+	case "approved":
+		st = entity.RoleReqApproved
+	case "rejected":
+		st = entity.RoleReqRejected
+	case "", "all":
+		st = "" // repo tarafı tümünü getirir
+	default:
+		return nil, errors.New("invalid status")
+	}
+
+	rows, err := s.rr.List(ctx, st, limit)
+	if err != nil {
+		return nil, err
+	}
+	vms := viewmodel.ToRoleReqVMs(rows)
+	return vms, nil
+}
+
+func (s *authService) ApproveRoleRequest(ctx context.Context, id uint, adminUsername string) error {
+	if id == 0 {
+		return errors.New("invalid id")
+	}
+
+	if err := s.rr.Approve(ctx, id, adminUsername); err != nil {
+		return err
+	}
+
+	rr, err := s.rr.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	u, err := s.ur.GetByUsername(ctx, rr.Username)
+	if err != nil {
+		return err
+	}
+	u.Role = entity.RoleAdmin
+	u.UpdatedAt = time.Now()
+	if err := s.ur.Update(ctx, u.Username, u); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *authService) RejectRoleRequest(ctx context.Context, id uint, adminUsername string) error {
+	if id == 0 {
+		return errors.New("invalid id")
+	}
+	return s.rr.Reject(ctx, id, adminUsername)
 }

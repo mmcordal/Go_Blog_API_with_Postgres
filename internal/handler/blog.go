@@ -33,14 +33,6 @@ func (h *BlogHandler) CreateBlog(c *fiber.Ctx) error {
 			"error": "Invalid token username",
 		})
 	}
-	/*
-		userID, ok := c.Locals("user_id").(uint)
-		if !ok || userID == 0 {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Invalid token userID",
-			})
-		}
-	*/
 
 	err = h.bs.CreateBlog(context.Background(), &input, username)
 	if err != nil {
@@ -52,7 +44,6 @@ func (h *BlogHandler) CreateBlog(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message":  "Blog created successfully",
 		"username": username,
-		//"userID":   userID,
 	})
 }
 
@@ -127,7 +118,6 @@ func (h *BlogHandler) GetAllBlogs(c *fiber.Ctx) error {
 	includeDeleted := false
 	// include_deleted=true mu?
 	if v := c.Query("include_deleted"); v == "true" || v == "1" {
-		// rol kontrolü: sadece admin kullanabilsin
 		if role, _ := c.Locals("role").(string); role == "admin" {
 			includeDeleted = true
 		}
@@ -150,11 +140,16 @@ func (h *BlogHandler) GetBlogsByAuthor(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid token username"})
 	}
 
+	username := paramUsername
+	if strings.EqualFold(paramUsername, "me") {
+		username = tokenUsername
+	}
+
 	// include_deleted=true/1/yes destekle
 	inc := strings.ToLower(c.Query("include_deleted"))
 	includeDeleted := inc == "1" || inc == "true" || inc == "yes"
 
-	resp, err := h.bs.GetBlogsByAuthor(context.Background(), paramUsername, tokenUsername, includeDeleted)
+	resp, err := h.bs.GetBlogsByAuthor(context.Background(), username, tokenUsername, includeDeleted)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -165,9 +160,18 @@ func (h *BlogHandler) GetBlogsByAuthor(c *fiber.Ctx) error {
 }
 
 func (h *BlogHandler) GetBlogsByAuthorIncludeDeleted(c *fiber.Ctx) error {
-	username := c.Params("username")
-	if username == "" {
+	paramUsername := c.Params("username")
+	if paramUsername == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid username"})
+	}
+
+	username := paramUsername
+	if strings.EqualFold(paramUsername, "me") {
+		tokenUsername, _ := c.Locals("username").(string)
+		if tokenUsername == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+		}
+		username = tokenUsername
 	}
 
 	resp, err := h.bs.GetBlogsByAuthorIncludeDeleted(context.Background(), username)

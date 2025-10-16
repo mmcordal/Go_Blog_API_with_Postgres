@@ -10,6 +10,7 @@ import (
 func AutoMigrate(db *gorm.DB) {
 	migrate(db, &entity.User{})
 	migrate(db, &entity.Blog{})
+	migrate(db, &entity.RoleRequest{})
 }
 
 func migrate(db *gorm.DB, model interface{}) {

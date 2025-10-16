@@ -303,20 +303,24 @@ func (s *blogService) GetBlogByTitle(ctx context.Context, title, username string
 	if title == "" {
 		return nil, errors.New("Invalid Title")
 	}
+
 	user, err := s.ur.GetByUsername(ctx, username)
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
+
 	blog, err := s.br.GetBlogByTitle(ctx, title)
 	if err != nil {
 		return nil, errors.New("blog not found")
 	}
+
 	if blog.Content.Username == username { // login olan kişi (token sahibi) çağırılan blogun yazarıysa onaylanmasa bile görüntülesin
 		return viewmodel.ToBlogVM(blog), nil
 	}
 	if user.Role == "admin" { // login olan kişi (token sahibi) admin değilse sadece onaylanmış bir blogu aratıp görebilir
 		return viewmodel.ToBlogVM(blog), nil
 	}
+
 	b2, err := s.br.GetBlogByTitleTrueApproved(ctx, title)
 	if err != nil {
 		return nil, errors.New("blog not found or not approved")
