@@ -2,6 +2,7 @@
 
 Bu proje, Go dili kullanılarak geliştirilmiş bir blog web API uygulamasıdır.  
 Amaç backend geliştirme pratiği yapmaktır.  
+Not: Frontend eklemelerinin çoğunluğu AI yardımı ile yapılmıştır.
 
 ## Özellikler
 - Go (Fiber framework)
@@ -10,6 +11,7 @@ Amaç backend geliştirme pratiği yapmaktır.
 - Docker (container yönetimi)
 - JWT (kimlik doğrulama)
 - SHA256 (şifreleme)
+- Vue.js
 
 
 ## Kurulum
